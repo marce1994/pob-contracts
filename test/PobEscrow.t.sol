@@ -18,7 +18,7 @@ contract PobEscrowTest is Test {
 
     function setUp() public {
         vm.startPrank(deployer);
-        target = new PobEscrow();
+        target = new PobEscrow(1);
         vm.stopPrank();
 
         vm.startPrank(seller);
@@ -53,16 +53,29 @@ contract PobEscrowTest is Test {
     function testPublish() public {
         vm.startPrank(seller);
 
-        // DataTypes.PostData = DataTypes.PostData(
-        //     uint256 profileId;
-        //     string contentURI;
-        //     address collectModule;
-        //     bytes collectModuleInitData;
-        //     address referenceModule;
-        //     bytes referenceModuleInitData;
-        // ); 
+        uint256 profileId = lensHub.tokenOfOwnerByIndex(seller, 0);
+        console.log("profileId", profileId);
 
-        lensHub.post(vars);
+        // DataTypes.ProfileStruct memory profile = lensHub.getProfile(profileId);
+        // uint256 sellerProfileId 
+        // bytes memory aux = 0x0000000000000000000000000000000000000000000000000000000000000001;
+        console.log(string(toBytes(1)));
+        DataTypes.PostData memory sellerPost = DataTypes.PostData(
+            profileId,// uint256 profileId;
+            "https://pastebin.com/raw/hBhU7Re0",// string contentURI;
+            address(0x0BE6bD7092ee83D44a6eC1D949626FeE48caB30c),// address collectModule;
+            toBytes(1),// bytes collectModuleInitData;
+            address(0),// address referenceModule;
+            bytes("")// bytes referenceModuleInitData;
+        );
+
+        lensHub.post(sellerPost);
+        
         vm.stopPrank();
+    }
+
+    function toBytes(uint256 x) public returns (bytes memory b) {
+        b = new bytes(32);
+        assembly { mstore(add(b, 32), x) }
     }
 }
