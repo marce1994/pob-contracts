@@ -19,7 +19,10 @@ contract PobEscrowTest is Test {
 
     function setUp() public {
         vm.startPrank(deployer);
+
         target = new PobEscrow(100);
+        vm.deal(deployer, 0 ether);
+        
         vm.stopPrank();
 
         vm.startPrank(seller);
@@ -51,16 +54,12 @@ contract PobEscrowTest is Test {
         vm.stopPrank();
     }
 
-    function testPublish() public {
+    function testBuy() public {
         vm.startPrank(seller);
 
         uint256 profileId = lensHub.tokenOfOwnerByIndex(seller, 0);
         console.log("profileId", profileId);
 
-        // DataTypes.ProfileStruct memory profile = lensHub.getProfile(profileId);
-        // uint256 sellerProfileId 
-        // bytes memory aux = 0x0000000000000000000000000000000000000000000000000000000000000001;
-        // console.log(string(toBytes(1)));
         DataTypes.PostData memory sellerPost = DataTypes.PostData(
             profileId,// uint256 profileId;
             "https://pastebin.com/raw/hBhU7Re0",// string contentURI;
@@ -71,39 +70,68 @@ contract PobEscrowTest is Test {
         );
 
         uint256 pubId = lensHub.post(sellerPost);
-        // uint256 pubId1 = lensHub.post(sellerPost);
-        
         console.log(pubId);
 
-// struct PublicationStruct {
-//         uint256 profileIdPointed;
-//         uint256 pubIdPointed;
-//         string contentURI;
-//         address referenceModule;
-//         address collectModule;
-//         address collectNFT;
-//     }
-        DataTypes.PublicationStruct memory publication = lensHub.getPub(profileId, pubId);
-        // DataTypes.PublicationStruct memory publication1 = lensHub.getPub(profileId, pubId1);
-
-        console.log(publication.profileIdPointed, profileId);
-        console.log(publication.pubIdPointed, profileId);
-        console.log(publication.contentURI, profileId);
-
-        // console.log(publication1.profileIdPointed, profileId);
-        // console.log(publication1.pubIdPointed, profileId);
-        // console.log(publication1.contentURI, profileId);
-
         target.sell(profileId, pubId, 10 ether);
-        // target.sell(profileId, pubId1, 10 ether);
         
         vm.stopPrank();
 
         vm.startPrank(buyer);
+        
         vm.deal(buyer, 100 ether);
-        // profileId = lensHub.tokenOfOwnerByIndex(buyer, 0);
+
         target.buy{value: 10 ether}(profileId, pubId, commissioner);
+        
         target.confirmBuy(profileId, pubId);
+
+        // Asserts
+        console.log(buyer.balance);
+        // assertEq(buyer.balance, b);
+        console.log(deployer.balance);
+        // assertEq(deployer.balance, b);
+        console.log(seller.balance);
+        // assertEq(seller.balance, 9.);
+        console.log(commissioner.balance);
+        // assertEq(commissioner.balance, 0.5 ether);
+        
+        vm.stopPrank();
+    }
+
+    function testCancelBuy() public {
+        vm.startPrank(seller);
+
+        uint256 profileId = lensHub.tokenOfOwnerByIndex(seller, 0);
+        console.log("profileId", profileId);
+
+        DataTypes.PostData memory sellerPost = DataTypes.PostData(
+            profileId,// uint256 profileId;
+            "https://pastebin.com/raw/hBhU7Re0",// string contentURI;
+            address(0x0BE6bD7092ee83D44a6eC1D949626FeE48caB30c),// address collectModule;
+            toBytes(1),// bytes collectModuleInitData;
+            address(0),// address referenceModule;
+            bytes("")// bytes referenceModuleInitData;
+        );
+
+        uint256 pubId = lensHub.post(sellerPost);
+        
+        console.log(pubId);
+
+        target.sell(profileId, pubId, 10 ether);
+        
+        vm.stopPrank();
+
+        vm.startPrank(buyer);
+        
+        vm.deal(buyer, 100 ether);
+        target.buy{value: 10 ether}(profileId, pubId, commissioner);
+        
+        vm.stopPrank();
+
+        vm.startPrank(seller);
+        
+        target.cancelBuy(profileId, pubId);
+        
+        vm.stopPrank();
 
         console.log(buyer.balance);
         console.log(deployer.balance);
