@@ -4,15 +4,21 @@ pragma solidity ^0.8.13;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "src/interfaces/IPobEscrow.sol";
+import "lens/core/LensHub.sol";
 
 uint256 constant PUBLISHED = 0;
 uint256 constant LOCKED = 1;
 uint256 constant SOLD = 2;
+address constant MAINNET_LENS_HUB = 0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d;
+address constant MUMBAI_LENS_HUB = 0x60Ae865ee4C725cd04353b5AAb364553f56ceF82;
+
 
 contract PobEscrow is IPobEscrow, Ownable {
-    mapping(address => uint256) _balance;
-    mapping(address => uint256) _balanceLocked;
-    mapping(uint256 => Sale) _lockedSales;
+    LensHub private _lensHub = LensHub(MUMBAI_LENS_HUB);
+
+    mapping(address => uint256) internal _balance;
+    mapping(address => uint256) internal _balanceLocked;
+    mapping(uint256 => Sale) internal _lockedSales;
 
     struct Sale {
         uint256 price; // total price del producto
@@ -27,12 +33,7 @@ contract PobEscrow is IPobEscrow, Ownable {
         uint256 state; // Publication state
     }
     
-    constructor(address newOwner) {
-        _transferOwnership(newOwner);
-    }
-
-    function test() public onlyOwner returns (bool) {
-        return true;
+    constructor() {
     }
 
     /** FUNCTIONS */
@@ -44,8 +45,12 @@ contract PobEscrow is IPobEscrow, Ownable {
      */
     function sell(uint256 pubId, uint256 price) external {
         address seller = msg.sender;
+         
+        //  getPub(uint256 profileId, uint256 pubId)
 
+        // require(_lensHub.getPub[pubId].seller == address(0), "ALREADY PUBLISHED");
         require(_lockedSales[pubId].seller == address(0), "ALREADY PUBLISHED");
+
 
         // Sale sale = new Sale();
         // sale.
@@ -56,8 +61,8 @@ contract PobEscrow is IPobEscrow, Ownable {
      *  @param commissioner address of the user that mirrored the publication or marketplace if 0x0
      *  @dev buyer will be the msg.sender
      */
-    function buy(uint256 pubId, address commissioner) external payable {
-
+    function buy(uint256 lensId, uint256 pubId, address commissioner) external payable {
+        require(_lockedSales[pubId].seller == address(0), "ALREADY PUBLISHED");
     }
 
     /** @notice function to cancel an item bought and return the value locked
