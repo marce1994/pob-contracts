@@ -11,11 +11,11 @@ interface IPobEscrow {
      *  @param pubId Id of the Lens Publication
      *  @param price Price of the item to sell
      */
-    event sell(uint256 pubId, uint256 price);
+    event Sell(uint256 pubId, uint256 price);
 
     /** @notice event to signal that a publication received an offer to buy
      *  @param pubId Id of the Lens Publication
-     *  @param comissioner address of the user that mirrored the publication or marketplace if 0x0
+     *  @param commissioner address of the user that mirrored the publication or marketplace if 0x0
      */
     event Buy(uint256 pubId, address commissioner);
 
@@ -41,7 +41,7 @@ interface IPobEscrow {
 
     /** @notice function to buy an item
      *  @param pubId Id of the Lens Publication
-     *  @param comissioner address of the user that mirrored the publication or marketplace if 0x0
+     *  @param commissioner address of the user that mirrored the publication or marketplace if 0x0
      *  @dev buyer will be the msg.sender
      */
     function buy(uint256 pubId, address commissioner) external payable;
@@ -50,12 +50,11 @@ interface IPobEscrow {
      *  @param pubId Id of the Lens Publication
      *  @dev reverts if msg.sender is not the seller 
      */
-    function cancelBuy(uint256 pubId);
+    function cancelBuy(uint256 pubId) external;
 
     /** @notice function to signal a confirmed buy and unlock the value for seller and commissioner
      *  @param pubId Id of the Lens Publication
      *  @dev reverts if msg.sender is not the buyer
      */
-    function confirmBuy(uint256 pubId);
-    
+    function confirmBuy(uint256 pubId) external;
 }
