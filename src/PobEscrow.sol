@@ -67,7 +67,24 @@ contract PobEscrow is IPobEscrow, Ownable {
      *  @dev buyer will be the msg.sender
      */
     function buy(uint256 profileId, uint256 pubId, address commissioner) external payable {
-        require(_lockedSales[pubId].buyer == address(0), "ALREADY SOLD");
+        Sale storage sale = _lockedSales[profileId][pubId];
+        
+        require(_lockedSales[profileId][pubId].buyer == address(0), "ALREADY SOLD");
+        require(msg.sender != sale.seller, "");
+
+        _balance[msg.sender] = msg.value;
+        sale.buyer = msg.sender;
+        sale.state = LOCKED;
+
+        if(commissioner == address(0))
+        {
+            sale.commisioner = address(this);
+        } else {
+            sale.commissioner = commissioner;
+        }
+
+
+        emit Buy(profileId, pubId, sale.commissioner);
     }
 
     /** @notice function to cancel an item bought and return the value locked
@@ -75,7 +92,15 @@ contract PobEscrow is IPobEscrow, Ownable {
      *  @dev reverts if msg.sender is not the seller 
      */
     function cancelBuy(uint256 profileId, uint256 pubId) external {
+        Sale storage sale = _lockedSales[profileId][pubId];
+        require(msg.sender == sale.seller, "SENDER_MUST_BE_SELLER");
 
+        sale.buyer = address(0);
+        sale.state = PUBLISHED;
+
+        payable(sale.buyer).call{ value: sale.price }("");
+
+        emit BuyCanceled(profileId, pubId);
     }
 
     /** @notice function to signal a confirmed buy and unlock the value for seller and commissioner
@@ -83,7 +108,14 @@ contract PobEscrow is IPobEscrow, Ownable {
      *  @dev reverts if msg.sender is not the buyer
      */
     function confirmBuy(uint256 profileId, uint256 pubId) external {
+        require(msg.sender == sale.buyer, "SENDER_MUST_BE_BUYER");
 
+        sale.state = SOLD;
+
+        payable(sale.commissioner).call{ value: sale.commission }("");
+        payable(sale.seller).call{ value: sale.amount }("");
+
+        emit BuyConfirmed(profileId, pubId);
     }
 
     function sold(uint256 profileId, uint256 pubId) public view returns (bool) {
