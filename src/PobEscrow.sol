@@ -5,9 +5,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "src/interfaces/IPobEscrow.sol";
 import "lens/core/LensHub.sol";
 
-uint256 constant PUBLISHED = 0;
-uint256 constant LOCKED = 1;
-uint256 constant SOLD = 2;
+uint256 constant NON_EXISTANT = 0;
+uint256 constant PUBLISHED = 1;
+uint256 constant LOCKED = 2;
+uint256 constant SOLD = 3;
 address constant MAINNET_LENS_HUB = 0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d;
 address constant MUMBAI_LENS_HUB = 0x60Ae865ee4C725cd04353b5AAb364553f56ceF82;
 
@@ -18,7 +19,7 @@ contract PobEscrow is IPobEscrow, Ownable {
     uint256 public currentCommission; // Commission percentaje with 2 decimals
 
     mapping(address => uint256) internal _balance;
-    mapping(uint256 => mapping(uint256 => Sale)) internal _lockedSales;
+    mapping(uint256 => mapping(uint256 => Sale)) internal _sales;
     
     struct Sale {
         uint256 state; // Publication state
@@ -44,7 +45,7 @@ contract PobEscrow is IPobEscrow, Ownable {
 
     /** FUNCTIONS */
     /** @notice function to set the commission
-     *  @param _newCommission the new commission (per 10000)
+     *  @param _commission the new commission (per 10000)
      *  @dev reverts if msg.sender is not owner
      */
     function setCurrentCommission(uint256 _commission) external onlyOwner {
@@ -57,13 +58,13 @@ contract PobEscrow is IPobEscrow, Ownable {
      *  @dev seller will be the msg.sender
      */
     function sell(uint256 profileId, uint256 pubId, uint256 price) external isPublisher(msg.sender, profileId, pubId) {
-        require(_lockedSales[pubId].seller == address(0), "ALREADY PUBLISHED");
+        require(_sales[profileId][pubId].seller == address(0), "ALREADY PUBLISHED");
         require(price > 0, "PRICE IS ZERO");
 
-        _lockedSales[profileId][pubId].seller = msg.sender;
-        _lockedSales[profileId][pubId].price = price;
-        _lockedSales[profileId][pubId].state = PUBLISHED;
-        _lockedSales[profileId][pubId].commission = currentCommission;
+        _sales[profileId][pubId].seller = msg.sender;
+        _sales[profileId][pubId].price = price;
+        _sales[profileId][pubId].state = PUBLISHED;
+        _sales[profileId][pubId].commission = currentCommission;
 
         emit Sell(profileId, pubId, price, currentCommission);
     }
@@ -74,7 +75,7 @@ contract PobEscrow is IPobEscrow, Ownable {
      *  @dev buyer will be the msg.sender
      */
     function buy(uint256 profileId, uint256 pubId, address commissioner) external payable {
-        Sale storage sale = _lockedSales[profileId][pubId];
+        Sale storage sale = _sales[profileId][pubId];
         
         require(sale.state == PUBLISHED, "NOT AVAIBLE");
         require(msg.sender != sale.seller, "BUYER = SELLER");
@@ -102,7 +103,7 @@ contract PobEscrow is IPobEscrow, Ownable {
      *  @dev reverts if msg.sender is not the seller 
      */
     function cancelBuy(uint256 profileId, uint256 pubId) external {
-        Sale storage sale = _lockedSales[profileId][pubId];
+        Sale storage sale = _sales[profileId][pubId];
         require(msg.sender == sale.seller, "SENDER IS NOT SELLER");
         require(sale.state == LOCKED, "ITEM NOT BOUGHT");
 
@@ -123,7 +124,7 @@ contract PobEscrow is IPobEscrow, Ownable {
      *  @dev reverts if msg.sender is not the buyer
      */
     function confirmBuy(uint256 profileId, uint256 pubId) external {
-        Sale storage sale = _lockedSales[profileId][pubId];
+        Sale storage sale = _sales[profileId][pubId];
 
         require(msg.sender == sale.buyer, "SENDER IS NOT BUYER");
         require(sale.state == LOCKED, "ITEM NOT BOUGHT");
@@ -150,7 +151,8 @@ contract PobEscrow is IPobEscrow, Ownable {
         // TODO: withdraw only leftovers
     }
 
-    function sold(uint256 profileId, uint256 pubId) public view returns (bool) {
-        return _lockedSales[pubId].buyer != address(0);
+    function state(uint256 profileId, uint256 pubId) public view returns (uint256) {
+        require(_sales[profileId][pubId].state != NON_EXISTANT, "NON EXISTANT ITEM");
+        return _sales[profileId][pubId].state;
     }
 }
