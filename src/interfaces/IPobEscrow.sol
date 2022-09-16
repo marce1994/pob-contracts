@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
@@ -11,8 +11,9 @@ interface IPobEscrow {
      *  @param profileId Id of the Lens Profile
      *  @param pubId Id of the Lens Publication
      *  @param price Price of the item to sell
+     *  @param commission Percentage of commission per 10000
      */
-    event Sell(uint256 profileId, uint256 pubId, uint256 price);
+    event Sell(uint256 profileId, uint256 pubId, uint256 price, uint256 commission);
 
     /** @notice event to signal that a publication received an offer to buy
      *  @param profileId Id of the Lens Profile

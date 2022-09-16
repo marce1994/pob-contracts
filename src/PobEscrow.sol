@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "src/interfaces/IPobEscrow.sol";
 import "lens/core/LensHub.sol";
@@ -16,21 +15,21 @@ address constant MUMBAI_LENS_HUB = 0x60Ae865ee4C725cd04353b5AAb364553f56ceF82;
 contract PobEscrow is IPobEscrow, Ownable {
     LensHub private _lensHub = LensHub(MUMBAI_LENS_HUB);
 
+    uint256 public currentCommission; // Commission percentaje with 2 decimals
+
     mapping(address => uint256) internal _balance;
-    mapping(address => uint256) internal _balanceLocked;
     mapping(uint256 => mapping(uint256 => Sale)) internal _lockedSales;
     
     struct Sale {
-        uint256 price; // total price del producto
+        uint256 state; // Publication state
 
+        uint256 price; // total price del producto
         address seller; // --
+
         address buyer; // --
         address commissioner; // address del commisioner
+        uint256 commission; // percentage per 10000 of commission
 
-        uint256 amount; // ammount que recibe el seller
-        uint256 commission; // ammount que recibe el commissioner
-
-        uint256 state; // Publication state
     }
     
     modifier isPublisher(address publisher, uint256 profileId, uint256 pubId) {
@@ -39,26 +38,34 @@ contract PobEscrow is IPobEscrow, Ownable {
         _;
     }
 
-    constructor() {}
+    constructor(uint256 _commission) {
+        currentCommission = _commission;
+    }
 
     /** FUNCTIONS */
+    /** @notice function to set the commission
+     *  @param _newCommission the new commission (per 10000)
+     *  @dev reverts if msg.sender is not owner
+     */
+    function setCurrentCommission(uint256 _commission) external onlyOwner {
+        currentCommission = _commission;
+    }
 
     /** @notice function to sell an item 
      *  @param pubId Id of the Lens Publication
      *  @param price Price of the item to sell
      *  @dev seller will be the msg.sender
      */
-    function sell(uint256 profileId, uint256 pubId, uint256 price) external {
-        address seller = msg.sender;
-         
-        profileId//  getPub(uint256 profileId, uint256 pubId)
-
-        // require(_lensHub.getPub[pubId].seller == address(0), "ALREADY PUBLISHED");
+    function sell(uint256 profileId, uint256 pubId, uint256 price) external isPublisher(msg.sender, profileId, pubId) {
         require(_lockedSales[pubId].seller == address(0), "ALREADY PUBLISHED");
+        require(price > 0, "PRICE IS ZERO");
 
+        _lockedSales[profileId][pubId].seller = msg.sender;
+        _lockedSales[profileId][pubId].price = price;
+        _lockedSales[profileId][pubId].state = PUBLISHED;
+        _lockedSales[profileId][pubId].commission = currentCommission;
 
-        // Sale sale = new Sale();
-        // sale.
+        emit Sell(profileId, pubId, price, currentCommission);
     }
 
     /** @notice function to buy an item
@@ -69,18 +76,21 @@ contract PobEscrow is IPobEscrow, Ownable {
     function buy(uint256 profileId, uint256 pubId, address commissioner) external payable {
         Sale storage sale = _lockedSales[profileId][pubId];
         
-        require(_lockedSales[profileId][pubId].buyer == address(0), "ALREADY SOLD");
-        require(msg.sender != sale.seller, "");
+        require(sale.state == PUBLISHED, "NOT AVAIBLE");
+        require(msg.sender != sale.seller, "BUYER = SELLER");
+        require(msg.value == sale.price);
 
-        _balance[msg.sender] = msg.value;
+        // TODO: Add check of PoH for commissioners
+
         sale.buyer = msg.sender;
         sale.state = LOCKED;
-
-        if(commissioner == address(0))
-        {
-            sale.commisioner = address(this);
+        
+        if (sale.commissioner == address(0)){
+            sale.commissioner = owner();
+            // TODO: update balances
         } else {
             sale.commissioner = commissioner;
+            // TODO: update balances
         }
 
 
@@ -93,12 +103,17 @@ contract PobEscrow is IPobEscrow, Ownable {
      */
     function cancelBuy(uint256 profileId, uint256 pubId) external {
         Sale storage sale = _lockedSales[profileId][pubId];
-        require(msg.sender == sale.seller, "SENDER_MUST_BE_SELLER");
+        require(msg.sender == sale.seller, "SENDER IS NOT SELLER");
+        require(sale.state == LOCKED, "ITEM NOT BOUGHT");
 
         sale.buyer = address(0);
         sale.state = PUBLISHED;
+        sale.commissioner = address(0);
 
-        payable(sale.buyer).call{ value: sale.price }("");
+        // TODO: update balances
+
+        (bool success, ) = payable(sale.buyer).call{ value: sale.price }("");
+        require(success, "REFUND FAILED");
 
         emit BuyCanceled(profileId, pubId);
     }
@@ -108,14 +123,31 @@ contract PobEscrow is IPobEscrow, Ownable {
      *  @dev reverts if msg.sender is not the buyer
      */
     function confirmBuy(uint256 profileId, uint256 pubId) external {
-        require(msg.sender == sale.buyer, "SENDER_MUST_BE_BUYER");
+        Sale storage sale = _lockedSales[profileId][pubId];
+
+        require(msg.sender == sale.buyer, "SENDER IS NOT BUYER");
+        require(sale.state == LOCKED, "ITEM NOT BOUGHT");
 
         sale.state = SOLD;
 
-        payable(sale.commissioner).call{ value: sale.commission }("");
-        payable(sale.seller).call{ value: sale.amount }("");
+        uint256 commissionAmount = sale.price * sale.commission / 10000;
+        uint256 amount = sale.price - commissionAmount;
 
+        // TODO: update balances
+
+        (bool successSell, ) = payable(sale.seller).call{ value: amount }("");
+        require(successSell, "SELLER TRANSFER FAILED");
+    
+        if (sale.commissioner != address(0)){
+            (bool successComm, ) = payable(sale.commissioner).call{ value: commissionAmount }("");
+            require(successComm, "COMMISSION TRANSFER FAILED");
+        }
+    
         emit BuyConfirmed(profileId, pubId);
+    }
+
+    function withdraw() external onlyOwner {
+        // TODO: withdraw only leftovers
     }
 
     function sold(uint256 profileId, uint256 pubId) public view returns (bool) {
