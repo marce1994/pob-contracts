@@ -35,7 +35,7 @@ contract PobEscrow is IPobEscrow, Ownable {
     
     modifier isPublisher(address publisher, uint256 profileId, uint256 pubId) {
         require(_lensHub.ownerOf(profileId) == publisher, "NOT PROFILE OWNER");
-        require(_lensHub.getPub(profileId, pubId).profileIdPointed == profileId, "NOT PUBLISHER");
+        // require(_lensHub.getPub(profileId, pubId).profileIdPointed == profileId, "NOT PUBLISHER");
         _;
     }
 
