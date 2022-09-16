@@ -33,8 +33,13 @@ contract PobEscrow is IPobEscrow, Ownable {
         uint256 state; // Publication state
     }
     
-    constructor() {
+    modifier isPublisher(address publisher, uint256 profileId, uint256 pubId) {
+        require(_lensHub.ownerOf(profileId) == publisher, "NOT PROFILE OWNER");
+        require(_lensHub.getPub(profileId, pubId).profileIdPointed == profileId, "NOT PUBLISHER");
+        _;
     }
+
+    constructor() {}
 
     /** FUNCTIONS */
 
@@ -46,7 +51,7 @@ contract PobEscrow is IPobEscrow, Ownable {
     function sell(uint256 profileId, uint256 pubId, uint256 price) external {
         address seller = msg.sender;
          
-        //  getPub(uint256 profileId, uint256 pubId)
+        profileId//  getPub(uint256 profileId, uint256 pubId)
 
         // require(_lensHub.getPub[pubId].seller == address(0), "ALREADY PUBLISHED");
         require(_lockedSales[pubId].seller == address(0), "ALREADY PUBLISHED");
