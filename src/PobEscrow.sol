@@ -85,14 +85,15 @@ contract PobEscrow is IPobEscrow, Ownable {
 
         sale.buyer = msg.sender;
         sale.state = LOCKED;
+        sale.commissioner = commissioner;
         
-        if (sale.commissioner == address(0)){
-            sale.commissioner = owner();
-            // TODO: update balances
-        } else {
-            sale.commissioner = commissioner;
-            // TODO: update balances
-        }
+        // if (sale.commissioner == address(0)){
+        //     sale.commissioner = owner();
+        //     // TODO: update balances
+        // } else {
+        //     sale.commissioner = commissioner;
+        //     // TODO: update balances
+        // }
 
 
         emit Buy(profileId, pubId, sale.commissioner);
@@ -131,17 +132,29 @@ contract PobEscrow is IPobEscrow, Ownable {
 
         sale.state = SOLD;
 
-        uint256 commissionAmount = sale.price * sale.commission / 10000;
-        uint256 amount = sale.price - commissionAmount;
+
+        uint256 ownerCommission;
+        uint256 commissionerCommission;
+        if (sale.commissioner != address(0) && sale.commissioner != owner()){
+            ownerCommission = sale.price * sale.commission / 10000 / 2;
+            commissionerCommission = sale.price * sale.commission / 10000 / 2;
+        } else {
+            ownerCommission = sale.price * sale.commission / 10000;
+        }
+
+        uint256 amount = sale.price - ownerCommission - commissionerCommission;
 
         // TODO: update balances
 
         (bool successSell, ) = payable(sale.seller).call{ value: amount }("");
         require(successSell, "SELLER TRANSFER FAILED");
+
+        (bool successOwner, ) = payable(owner()).call{ value: ownerCommission }("");
+        require(successOwner, "OWNER TRANSFER FAILED");
     
-        if (sale.commissioner != address(0)){
-            (bool successComm, ) = payable(sale.commissioner).call{ value: commissionAmount }("");
-            require(successComm, "COMMISSION TRANSFER FAILED");
+        if (commissionerCommission > 0){
+            (bool successComm, ) = payable(sale.commissioner).call{ value: commissionerCommission }("");
+            require(successComm, "COMMISSIONER TRANSFER FAILED");
         }
     
         emit BuyConfirmed(profileId, pubId);
