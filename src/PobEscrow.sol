@@ -18,8 +18,8 @@ contract PobEscrow is IPobEscrow, Ownable {
 
     mapping(address => uint256) internal _balance;
     mapping(address => uint256) internal _balanceLocked;
-    mapping(uint256 => Sale) internal _lockedSales;
-
+    mapping(uint256 => mapping(uint256 => Sale)) internal _lockedSales;
+    
     struct Sale {
         uint256 price; // total price del producto
 
@@ -43,7 +43,7 @@ contract PobEscrow is IPobEscrow, Ownable {
      *  @param price Price of the item to sell
      *  @dev seller will be the msg.sender
      */
-    function sell(uint256 pubId, uint256 price) external {
+    function sell(uint256 profileId, uint256 pubId, uint256 price) external {
         address seller = msg.sender;
          
         //  getPub(uint256 profileId, uint256 pubId)
@@ -61,15 +61,15 @@ contract PobEscrow is IPobEscrow, Ownable {
      *  @param commissioner address of the user that mirrored the publication or marketplace if 0x0
      *  @dev buyer will be the msg.sender
      */
-    function buy(uint256 lensId, uint256 pubId, address commissioner) external payable {
-        require(_lockedSales[pubId].seller == address(0), "ALREADY PUBLISHED");
+    function buy(uint256 profileId, uint256 pubId, address commissioner) external payable {
+        require(_lockedSales[pubId].buyer == address(0), "ALREADY SOLD");
     }
 
     /** @notice function to cancel an item bought and return the value locked
      *  @param pubId Id of the Lens Publication
      *  @dev reverts if msg.sender is not the seller 
      */
-    function cancelBuy(uint256 pubId) external {
+    function cancelBuy(uint256 profileId, uint256 pubId) external {
 
     }
 
@@ -77,11 +77,11 @@ contract PobEscrow is IPobEscrow, Ownable {
      *  @param pubId Id of the Lens Publication
      *  @dev reverts if msg.sender is not the buyer
      */
-    function confirmBuy(uint256 pubId) external {
+    function confirmBuy(uint256 profileId, uint256 pubId) external {
 
     }
 
-    function sold(uint256 pubId) public view returns (bool) {
+    function sold(uint256 profileId, uint256 pubId) public view returns (bool) {
         return _lockedSales[pubId].buyer != address(0);
     }
 }
