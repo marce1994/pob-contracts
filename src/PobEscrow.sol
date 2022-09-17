@@ -12,7 +12,6 @@ uint256 constant SOLD = 3;
 address constant MAINNET_LENS_HUB = 0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d;
 address constant MUMBAI_LENS_HUB = 0x60Ae865ee4C725cd04353b5AAb364553f56ceF82;
 
-
 contract PobEscrow is IPobEscrow, Ownable {
     LensHub private _lensHub = LensHub(MUMBAI_LENS_HUB);
 
@@ -134,7 +133,6 @@ contract PobEscrow is IPobEscrow, Ownable {
 
         sale.state = SOLD;
 
-
         uint256 ownerCommission;
         uint256 commissionerCommission;
         if (sale.commissioner != address(0) && sale.commissioner != owner()){
@@ -164,6 +162,19 @@ contract PobEscrow is IPobEscrow, Ownable {
 
     function withdraw() external onlyOwner {
         // TODO: withdraw only leftovers
+    }
+
+    // ViewMethods
+    function getSale(uint256 profileId, uint256 pubId) public view returns (Sale memory) {
+        return _sales[profileId][pubId];
+    }
+
+    function getPrice(uint256 profileId, uint256 pubId) public view returns (uint256) {
+        return _sales[profileId][pubId].price;
+    }
+    
+    function getCommission(uint256 profileId, uint256 pubId) public view returns (uint256) {
+        return _sales[profileId][pubId].price;
     }
 
     function state(uint256 profileId, uint256 pubId) public view returns (uint256) {

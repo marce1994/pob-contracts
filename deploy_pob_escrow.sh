@@ -4,4 +4,4 @@ source .env \
     --rpc-url $BOMBAI_RPC_URL \
     --private-key $PRIVATE_KEY_DEPLOYER \
     --etherscan-api-key $POLYGONSCAN_API_KEY \
-    # --verify
+    --verify

@@ -7,6 +7,7 @@ import "lens/core/LensHub.sol";
 import "lens/libraries/DataTypes.sol";
 import "lens/mocks/MockProfileCreationProxy.sol";
 
+// source .env && forge test --fork-url ${BOMBAI_RPC_URL} -vvvv
 contract PobEscrowTest is Test {
     address deployer = makeAddr("deployer");
     address seller = makeAddr("seller");
@@ -128,6 +129,7 @@ contract PobEscrowTest is Test {
 
         target.sell(profileId, pubId, 10 ether);
         
+        console.log("Price", target.getPrice(profileId, pubId));
         vm.stopPrank();
 
         vm.startPrank(buyer);
@@ -143,7 +145,7 @@ contract PobEscrowTest is Test {
         vm.stopPrank();
 
         // Asserts
-        console.log(buyer.balance);
+        console.log(buyer.balance, buyerStartBalance);
         assertEq(buyer.balance, buyerStartBalance);
         console.log(deployer.balance);
         assertEq(deployer.balance, deployerStartBalance);
