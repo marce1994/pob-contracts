@@ -18,15 +18,17 @@ contract PobEscrowTest is Test {
     MockProfileCreationProxy profileFactory = MockProfileCreationProxy(0x420f0257D43145bb002E69B14FF2Eb9630Fc4736);
 
     function setUp() public {
+        // Deploy Escrow contract
         vm.startPrank(deployer);
-
         target = new PobEscrow(100);
         vm.deal(deployer, 0 ether);
-        
         vm.stopPrank();
 
-        vm.startPrank(seller);
+        // Set balances
+        vm.deal(buyer, 100 ether);
+
         // Seller profile
+        vm.startPrank(seller);
         DataTypes.CreateProfileData memory sellerProfileData = DataTypes.CreateProfileData(
             seller,
             "pobseller",
@@ -39,8 +41,8 @@ contract PobEscrowTest is Test {
         profileFactory.proxyCreateProfile(sellerProfileData);
         vm.stopPrank();
 
-        vm.startPrank(buyer);
         // Buyer profile
+        vm.startPrank(buyer);
         DataTypes.CreateProfileData memory buyerProfileData = DataTypes.CreateProfileData(
             buyer,
             "pobbuyer",
@@ -55,6 +57,11 @@ contract PobEscrowTest is Test {
     }
 
     function testBuy() public {
+        uint256 buyerStartBalance = buyer.balance;
+        uint256 deployerStartBalance = deployer.balance;
+        uint256 sellerStartBalance = seller.balance;
+        uint256 commissionerStartBalance = commissioner.balance;
+
         vm.startPrank(seller);
 
         uint256 profileId = lensHub.tokenOfOwnerByIndex(seller, 0);
@@ -77,27 +84,30 @@ contract PobEscrowTest is Test {
         vm.stopPrank();
 
         vm.startPrank(buyer);
-        
-        vm.deal(buyer, 100 ether);
 
         target.buy{value: 10 ether}(profileId, pubId, commissioner);
-        
         target.confirmBuy(profileId, pubId);
+
+        vm.stopPrank();
 
         // Asserts
         console.log(buyer.balance);
-        // assertEq(buyer.balance, b);
+        assertEq(buyer.balance, buyerStartBalance - 10 ether);
         console.log(deployer.balance);
-        // assertEq(deployer.balance, b);
+        assertEq(deployer.balance, deployerStartBalance + 0.05 ether);
         console.log(seller.balance);
-        // assertEq(seller.balance, 9.);
+        assertEq(seller.balance, sellerStartBalance + 9.9 ether);
         console.log(commissioner.balance);
-        // assertEq(commissioner.balance, 0.5 ether);
+        assertEq(commissioner.balance, commissionerStartBalance + 0.05 ether);
         
-        vm.stopPrank();
     }
 
     function testCancelBuy() public {
+        uint256 buyerStartBalance = buyer.balance;
+        uint256 deployerStartBalance = deployer.balance;
+        uint256 sellerStartBalance = seller.balance;
+        uint256 commissionerStartBalance = commissioner.balance;
+
         vm.startPrank(seller);
 
         uint256 profileId = lensHub.tokenOfOwnerByIndex(seller, 0);
@@ -122,7 +132,6 @@ contract PobEscrowTest is Test {
 
         vm.startPrank(buyer);
         
-        vm.deal(buyer, 100 ether);
         target.buy{value: 10 ether}(profileId, pubId, commissioner);
         
         vm.stopPrank();
@@ -133,12 +142,15 @@ contract PobEscrowTest is Test {
         
         vm.stopPrank();
 
+        // Asserts
         console.log(buyer.balance);
+        assertEq(buyer.balance, buyerStartBalance);
         console.log(deployer.balance);
+        assertEq(deployer.balance, deployerStartBalance);
         console.log(seller.balance);
+        assertEq(seller.balance, sellerStartBalance);
         console.log(commissioner.balance);
-
-        vm.stopPrank();
+        assertEq(commissioner.balance, commissionerStartBalance);
     }
 
     function toBytes(uint256 x) public returns (bytes memory b) {
