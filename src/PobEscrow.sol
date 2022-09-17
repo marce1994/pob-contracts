@@ -108,13 +108,15 @@ contract PobEscrow is IPobEscrow, Ownable {
         require(msg.sender == sale.seller, "SENDER IS NOT SELLER");
         require(sale.state == LOCKED, "ITEM NOT BOUGHT");
 
+        address buyer = sale.buyer;
+
         sale.buyer = address(0);
         sale.state = PUBLISHED;
         sale.commissioner = address(0);
 
         // TODO: update balances
 
-        (bool success, ) = payable(sale.buyer).call{ value: sale.price }("");
+        (bool success, ) = payable(buyer).call{ value: sale.price }("");
         require(success, "REFUND FAILED");
 
         emit BuyCanceled(profileId, pubId);
