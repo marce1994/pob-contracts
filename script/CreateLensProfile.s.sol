@@ -28,6 +28,7 @@ contract CreateLensProfileScript is Script {
     }
 
     function run() public {
+        vm.startBroadcast();
         DataTypes.CreateProfileData memory sellerProfileData = DataTypes.CreateProfileData(
             msg.sender,
             _names[msg.sender],
@@ -40,5 +41,6 @@ contract CreateLensProfileScript is Script {
         // console.log(sellerProfileData);
 
         profileFactory.proxyCreateProfile(sellerProfileData);
+        vm.stopBroadcast();
     }
 }
